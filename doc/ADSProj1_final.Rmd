@@ -1,0 +1,480 @@
+---
+title: "Off with the Old, On with the New? - A story of how inauguration speeches can shed some light on the evolution of the American society over time, and what remains rooted"
+output:
+  html_document: default
+  html_notebook: default
+runtime: shiny
+---
+
+#Introduction
+
+Presidential inaugural addresses mark the beginning of a new era of leadership. These addresses serve to dignify the nation and its values,to unite a deeply divded electorate, and to give a sense of direction and continuity. Some speeches have been serviceable, some forgettable, and some remembered till today. Well-known lines include John F. Kennedy's admonition to "ask not what your country can do for you; ask what you can do for your country", and Franklin D. Roosevelt's belief that "the only thing we have to fear is fear itself". 
+
+But inauguration speeches can provide more information and insights than just memorable and iconic quotes. A more focused and deeper analysis of these speeches over time could be highly illuminating and could provide some reflections on how the American society has evolved over time. While these addresses are still rooted to certain traditional expectations, purpose, and norms, they each also bear signs to the time in which it was written and delivered. 
+
+A variety of tools will be used in this notebook - natural , and text mining- to present some interesting angles, using the Inaugaration Speeches from George Washington in 1789 to the latest 2017 speech by Donald Trump. I will first present elements of inauguration speeches that have remained constant over time, and then proceed on to elements that have evolved, and what these patterns suggest about the evolution of the American society. In particular, I will focus on the political and social aspects of the American society. 
+
+I will first load the required libraries and data available.
+
+#####Load libraries
+```{r, message=FALSE, warning=FALSE}
+packages.used=c("tm", "wordcloud", "RColorBrewer", 
+                "dplyr", "tidytext", "topicmodels", "cluster", "ggplot2", "tidyr", "sp", "jpeg")
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+packages.needed=setdiff(packages.used, 
+              intersect(installed.packages()[,1], 
+                                  packages.used))
+if(length(packages.needed)>0){
+  install.packages(packages.needed, dependencies = TRUE,
+                   repos='http://cran.us.r-project.org')
+}
+
+library(tm)
+library(wordcloud)
+library(RColorBrewer)
+library(dplyr)
+library(tidytext)
+library(xlsx)
+library(topicmodels)
+library(cluster)
+library(tidyr)
+library(ggplot2)
+library(sp)
+library(jpeg)
+```
+
+This notebook was prepared with the following environmental settings.
+
+```{r}
+print(R.version)
+```
+
+#####Load and clean data available
+```{r}
+getwd()
+folder.path="../data/InauguralSpeeches/"
+speeches=list.files(path = folder.path, pattern = "*.txt")
+prex.out=substr(speeches, 6, nchar(speeches)-4)
+inaug.info=read.xlsx("../data/InaugurationInfo.xlsx", sheetIndex = 1)
+inaug.dates=read.delim("../data/InaugurationDates.txt", comment.char="#")
+```
+
+For the speeches, we remove extra white space, convert all letters to the lower case, remove [stop words].
+```{r}
+
+in.all<-Corpus(DirSource(folder.path))
+in.all<-tm_map(in.all, stripWhitespace)
+in.all<-tm_map(in.all, content_transformer(tolower))
+in.all<-tm_map(in.all, removeWords, stopwords("english"))
+in.all<-tm_map(in.all, removeWords, character(0))
+in.all<-tm_map(in.all, removePunctuation)
+in.all <- tm_map(in.all, removeNumbers)   
+```
+
+Now, I will begin with the first half of the analysis in this notebook. 
+
+#Part 1: What remains rooted? 
+
+It has always been hypothesized that presidents often tackle the same main themes in inaugration speeches: 
+
+<span style="color:blue">
+(i) To unite the people after a divisive election
+(ii) Emphasize continuity of government
+(iii) Highlight America's position in the world
+
+I will look into this hypothesis by first looking at the speeches as a whole, and then analyze whether these themes have remained characteristic in the speeches over time. This will be done by: 
+
+(a) On the more preliminary level by *word frequency analysis*
+(b) More in-depth by *hierarchial clustering*
+
+###Analysis as a whole: 1(a) Word frequency analysis
+
+```{r}
+dtm.in.all<-DocumentTermMatrix(in.all)
+dtms.in.all<-removeSparseTerms(dtm.in.all, 0.5)
+freqs.inall<- colSums(as.matrix(dtms.in.all))
+ords<-order(freqs.inall)
+wf<- data.frame(word=names(freqs.inall), freq=freqs.inall)
+
+#Plot words that appear at least 150 times
+p <- ggplot(subset(wf, freq>150), aes(word, freq))    
+p <- p + geom_bar(stat="identity")   
+p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))   
+p
+```
+
+From this word frequency analysis, we can infer the following: 
+
+(1) Words that serve appeal to core American values and highlight hopes and values: <span style="color:red">"free" "freedom" "peace" "united"  "union"</span> 
+(2) Words that push for action, continuity, and promise: <span style="color:red">"constituion", "government", "must", "now", "shall", "will", "time"</span>
+(3) Words that emphasize America's position in the world: <span style="color:red"> "war", "world", "nations", "nation", "great", "power", "union" </span> 
+
+This preliminary analysis seems to support the hypothesis that the three themes take the main stage in these speeches, by higher frequency use of words that push for the purpose of the speeches to unite, emphasize continuity, and highlight America's role. 
+
+To further verify the hypothesis of the three main themes, I will use hierarchal clustering:
+
+###Analysis as a whole: 1(b) Hierarchal clustering
+
+```{r, warning=FALSE, message=FALSE}
+#Further remove sparse terms
+dtmss.in.all<- removeSparseTerms(dtm.in.all, 0.35)
+d <- dist(t(dtmss.in.all), method="euclidian")   
+fit <- hclust(d=d, method="ward")   
+plot(fit, hang=-1)
+groups<- cutree(fit, k=6)
+rect.hclust(fit, k=6, border="red")
+```
+
+From the dendrogram (please refer to output folder for a clearer picture of the dendrogram), we can see that: 
+
+(1) The second huge cluster in red includes words that refer to core American values such as "liberty", "rights", "spirit", and "free" (**Theme 1**)
+
+(2) Words that call for action and continuity such as "government", "people", "can", "upon" in the fifth red cluster (**Theme 2**)
+
+(3) Words such as "world", "nations", "peace" in the fourth red cluster (***Theme 3***)
+
+Though the dendrogram is not as clear, it still provides valuable preliminary affirmation of the appearance of the three main themes in the inaugural speeches as a whole. 
+
+##Analysis over time: % frequency of word in speech over time 
+
+Now that we have preliminarily established that the three hypothesized themes can be observed in the speeches as a whole, we will now proceed to our main objective of Part 1, which is to see if such themes have persisted to be main messages in inaugural speeches over time. 
+
+To do this, I labelled each inaugural speech with index 1 to 58 in order of year of speech, with 1 refering to George Washington 1789 and 58 refering to Donald Trump 2017. 
+I then proceeded to compute TF-IDF weighted document-term matrices for individual speeches, and the individual term counts for each year (i.e. President) (*year_term_counts*). %frequency of word in inaugural addresses over time plots are then produced for words under consideration (*using function plot.yearterm*)
+
+```{r}
+#Arrange speeches by time 
+inaug.info$merge<-paste(inaug.info$File,"-", inaug.info$Term, sep="")
+speeches.time<-speeches[match(inaug.info$merge, prex.out)]
+indexdoc<- as.data.frame(speeches.time)
+indexdoc$index<- c(1:58)
+
+dtm.ind <- DocumentTermMatrix(in.all,
+                          control = list(weighting =
+                                           function(x)
+                                             weightTfIdf(x, normalize =
+                                                           FALSE),
+                                         stopwords = TRUE))
+dtm.ind.tdy=tidy(dtm.ind)
+dtm.in.all.tdy=tidy(dtm.in.all)
+index<- match(dtm.in.all.tdy$document, indexdoc$speeches.time)
+dtm.in.all.tdy.t=cbind(dtm.in.all.tdy, index)
+
+year_term_counts <- dtm.in.all.tdy.t %>%
+  complete(index, term, fill = list(count = 0)) %>%
+  group_by(index) %>%
+  mutate(year_total = sum(count))
+
+plot.yearterm<- function(wordvec) {
+  year_term_counts %>%
+  filter(term %in% wordvec) %>%
+  ggplot(aes(index, count / year_total)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~ term, scales = "free_y") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  ylab("% frequency of word in inaugural address")
+}
+```
+
+Now that we have the tools, I will proceed to analyze each theme using the plots generated. 
+
+####Theme 1: To unify the people
+
+```{r, message=FALSE, warning=FALSE}
+wordvec1<- c("free", "freedom", "peace", "great", "citizens")
+plot.yearterm(wordvec1)
+```
+
+We see from this plot that over time, the % frequencies of words used to appeal to a common American understanding such as "free", "freedom", "peace" etc have either increased or at the very least remained pretty constant throughout the years, supporting the hypothesis. 
+
+####Theme 2: Continuity 
+
+```{r,message=FALSE, warning=FALSE}
+wordvec2<-c("constitution", "government", "must", "now", "shall", "will", "time")
+plot.yearterm(wordvec2)
+```
+
+The plots suggests that other than **"government"** and **constitution** which showed a slight decrease over time (this phenomenon will be explained in the Part 2 (iv) of the notebook), all of the other words showed a constant % frequency, and increases for **"must"**, **"time"**, and **"will"**. 
+
+####Theme 3: America's position in the world
+
+```{r, message=FALSE, warning=FALSE}
+wordvec3<- c("nation", "power", "world", "great")
+plot.yearterm(wordvec3)
+```
+
+The plots supports the hypothesis that the one of the main themes of inaugural addresses is a stress on America's position as a global leader (**"Power"** and **"great"** showed constant trend), and her obligations to the international community (**"nation"**, **"world"** with a significant increase in **"world"** from the start of the 19th century ). 
+
+#Conclusion for Part 1: What remains rooted? 
+
+Inauguration addresses are often remembered as reflecting a particular time in history, but more importantly, they are likely to become the most important, memorable speech for every new leader. Even though speeches will differ, they ultimately serve to strike home the same main messages: to unite a deeply divided electorate, to emphasize continuity and priorities, and to ascertain America's position in the world. 
+
+#Part 2: What changed?
+
+The second part of this notebook will proceed on to look deeper into these addresses beyond the main themes. Being written in different societal contexts, these addresses could provide valuable insights on how the American society has evolved over time, in particular the mindsets and expectations of the people. This would then have an effect on how and what a leader would address in his inaugural speech, such as the tone, topics, and style.
+
+Similar to the analysis done in the previous section, I will seek to identify interesting changes and patterns in the speeches over time through words used, and draw inferences on how the American society has evolved. The analysis will focus on 4 main changes: 
+
+<span style="color:blue">
+(i) Concrete to Abstract 
+(ii) Formal to Colloquial 
+(iii) Passive to Activist 
+(iv) Republican to Democratic. 
+</span>
+
+To identify occurence of categories of words, I use the General Inquirer database which tags catagories mainly from the Harvard IV-4 and Lasswell value dictionary. This notebook presents the patterns of occurences of several GI word categories that could express the 4 main changes as listed above, and I will list in the notebook a few relevant words that belong to the related categories. For more information, one can refer to the GI webpage (http://www.wjh.harvard.edu/~inquirer/homecat.htm), which provides a spreadsheet that lists all the words that the current version of GI tags. 
+
+```{r}
+#Load word categories database from inquirer
+words<- read.csv("../data/inquirerbasic.csv")
+year_total= rep(NA, 58)
+for (i in 1:58) {
+  year_total[i]=as.numeric((year_term_counts[year_term_counts$index==i, 5][1,1]))}
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+#Create function "dfsfunc" that filters out individual dataframe from each category containing all the relevant words from the GI database, with input argument a vector "cat" that contains the names of the interested categories 
+dfsfunc<- function(cat) { 
+    listofdfs<-list()
+  for (i in 1:length(cat)){
+ colno<-which(colnames(words)==cat[i])
+    dat<- filter(words, words[, colno]==cat[i])
+    datword<-tolower(dat[,1])
+    dat<-filter(year_term_counts, term %in% datword)
+    finaldat<- dat %>% group_by(index) %>% summarize(count=sum(count))
+    finaldat$year_total<- year_total
+    listofdfs[[i]]<-finaldat}
+    return(listofdfs)}
+
+#Create function "catfunc" that takes in a character vector "cat" and generates ggplots of % sum frequency of words under the category in inaugural address against index of Presidents 
+catfunc<- function(cat) {
+  for(i in 1:length(cat)) {
+    name<-cat[i]
+    print(ggplot(data=as.data.frame(dfsfunc(cat)[[i]]),
+         aes(x=index, y=count / year_total)) +
+  geom_point() +
+    geom_smooth()+
+      ggtitle(paste("Word category:", name, sep="")) +
+  scale_y_continuous(labels = scales::percent_format()) +
+    xlab("Chronological index of Presidents")+
+  ylab("% frequency of word in inaugural address"))
+    ggsave(plot=last_plot(), filename=paste("Category", name,".jpeg", sep=""))
+    }}
+```
+
+Now that we have all the functions required to analyze the % frequency of words in interested word categories, we will proceed to analyze each of the 4 main changes seperately. 
+
+####(i) Concrete to Abstract 
+
+From the GI dictionary, I identified several possible word categories (*categoryi*) that could bring across ideas of concrete and abstract. Summing across counts for all words in each categories, below are the plots for each category under (i) displayed using the Shiny app.
+
+```{r,message=FALSE, warning=FALSE}
+categoryi<- c("Relig","TimeSpc", "NatrPro", "ABS", "Perceiv")
+```
+
+```{r, echo=FALSE}
+library(shiny)
+
+ui<- fluidPage (
+  titlePanel("Concrete to Abstract"), 
+  sidebarLayout(
+    sidebarPanel("Word Categories",
+                 selectInput('element_id', label='Select one option', choices=categoryi)),
+     mainPanel("% total frequency of all words in category in inaugural speech over time", 
+                p(textOutput('dynamicText')),
+              plotOutput('countcat', height = "450px")))) 
+
+
+server= function(input, output) { 
+  output$dynamicText <- renderText({
+    sprintf('You selected %s', input$element_id)
+  })
+  output$countcat <- renderPlot(height = 450, {
+    catfunc(input$element_id) 
+  })} 
+
+shinyApp(ui=ui, server=server)
+```
+
+The trend of less concrete expressions and increasing inclination to abstract rhetoric can be observed in the following ways. 
+
+(a) References to religious words <span style="color:red">(Category:"Relig", 103 words)</span> demonstrate a downward trend for most of the 19th century but increased rapidly in the 20th. Leaders increasingly brought in more philosophical and metaphysical concepts through words such as "eternal", "god", "fate", "heaven", "prayer", "sacred", "soul". 
+
+(b) Speeches have also become increasingly poetic, with references to expansive categories such as time and space <span style="color:red">(Category:"TimeSpc",  428 words)</span>, and processes found in nature <span style="color:red">(Cat: "NatrPro")</span>, specifically birth to death. Diversion of focus towards consciousness of space and time are characteristic of abstract rhetoric. 
+
+(c) GI has a huge category that includes a large range of idealistic words <span style="color:red">(Category: "ABS")</span>, such as "ideal", "belief", "destiny", and supernal concepts like "conscience" and "consciousness". From the ABS plot, we can see that the frequency of ABS words showed a stark increase from the 19th century onwards. 
+
+(d) In contrast, usage of words such as "clear", "appear", and "discover" <span style="color:red">(Category:"Perceiv")</span> peaked in and decreased from mid 19th century.
+
+#####Overall inference for (i): 
+
+The increasing tendency to appeal to the American public using abstract rhetoric could  reflect a growing inclination and acceptance of the American society towards these idealistic concepts and notions - perhaps a by-product of the challenges of modernity. 
+
+
+#### (ii) Formal to Colloquial
+
+Similarly, I identified several word categories that could convey ideas of formality and colloquial manner of expressions.Summing across counts for all words in each categories, below are the plots for each category under (ii) displayed using the Shiny app.
+
+```{r, message=FALSE, warning=FALSE}
+categoryii<- c("PowAuth", "Legal", "Intrj", "Know", "Causal")
+```
+
+```{r, echo=FALSE}
+ui<- fluidPage (
+  titlePanel("Formal to Colloquail"), 
+  sidebarLayout(
+    sidebarPanel("Word Categories",
+                 selectInput('element_id', label='Select one option', choices=categoryii)),
+     mainPanel("% total frequency of all words in category in inaugural speech over time", 
+                p(textOutput('dynamicText')),
+              plotOutput('countcat', height = "450px")))) 
+
+
+server= function(input, output) { 
+  output$dynamicText <- renderText({
+    sprintf('You selected %s', input$element_id)
+  })
+  output$countcat <- renderPlot(height = 450, {
+    catfunc(input$element_id) 
+  })} 
+
+shinyApp(ui=ui, server=server)
+```
+
+The trend of decreasing formality vs increasing casaulity and "de-intellectualization" of presidential rhetoric can be observed in the following ways.
+
+(a) Presidential speeches have become more informal. References to authoritative power and the tools used to invoke them <span style="color:red">(Category: "PowAuth")</span> peaked towards at the start of the 19th century in particular in Theodore Roosevelt's time, but rapidly declined from then. Roosevelt was involved in leading the country into the Progressive Era, and there was an imminent need to showcase firmness and authority in such a period of time to invoke national spirit. This possibly explains the peak in the usage of words like "order" and "rules". Similarly, references to legal and judicial matters <span style="color:red">(Category: "Legal")</span> through words such as "authority", "jurisdiction", "justice" and "law", also decreased steadily from the start of the 20th century. 
+
+(b) More relaxed speech form. References to exclamations, casual, and slang references <span style="color:red">(Category: "Intrj")</span> were rare throughout the 19th century but began to increase from mid-20th century, with a significant increase for Presidents including Ronald Reagan, George Bush, and Clinton. 
+
+(c) De-intellectualization of speech. Decreasing tendency over the years to make references to rational thought and evalautive processes and to voice out precise detailed thoughts in public. References to rational thought and cognitive states <span style="color:red">(Category: "Know")</span> have declined significantly from Roosevelt (index 32, 1933), such as "contemplate", "complex", "concept" and "detail". Similarly, references to causal processess and reasonings <span style="color:red">(Category:"Causal")</span> peaked at around Chester Arthur (1881) and exhibited a downward trend from then, for words such as "effect" that proxies for analysis. Less cognitive orientation of presidential speeches over time. 
+
+#####Overall inference for (ii): 
+What this change from formal to colloquial manner of speech could suggest is a change in what the American society values in their leaders. Times of war and turbulent periods necessitate leaders who could enforce a sense of authority and order. As ideals of "power to the public", inclusivity, and "connecting with the ground" grow in modern politics, the ability to reach out to the common man is increasingly prized. Presidential rhetoric has surrended to the pervasive and aggressive egalitarianism of American life - a growing movement in America from the 21st century. 
+
+
+#### (iii) Passive to Activist
+
+Similarly, I identified several word categories that could convey passive and active/confident forms of expressions. Summing across counts for all words in each categories, below are the plots for each category under (iii) displayed using the Shiny app.
+
+```{r, message=FALSE, warning=FALSE}
+categoryiii<- c("If", "Submit", "Begin", "Goal", "PowCoop")
+```
+
+```{r, echo=FALSE}
+ui<- fluidPage (
+  titlePanel("Passive to Active"), 
+  sidebarLayout(
+    sidebarPanel("Categories",
+                 selectInput('element_id', label='Select one option', choices=categoryiii)),
+     mainPanel("% frequency of sum of words in speech over time", 
+                p(textOutput('dynamicText')),
+              plotOutput('countcat', height = "450px")))) 
+
+
+server= function(input, output) { 
+  output$dynamicText <- renderText({
+    sprintf('You selected %s', input$element_id)
+  })
+  output$countcat <- renderPlot(height = 450, {
+    catfunc(input$element_id) 
+  })} 
+
+shinyApp(ui=ui, server=server)
+```
+
+The trend of decreasing uncertainty and passiveness of leaders, versus increasing confidence and activism can be observed in the following ways.
+
+(a) Stark decline in occurence of words denoting feelings of uncertainty, doubt and vagueness from the start of the 19th century <span style="color:red">(Category="If")</span>, such as "avoid", "doubt", "perhaps", "providence", "fate"
+
+(b) Significant decline in words connotating dependence on others and submission to authority or power since late 19th century <span style="color:red">(Category="Submit")</span>, such as "appeal", "concession", "despair", "obligation", "reliance", "submit"
+
+(c) More confidence in ability of self (i.e. the leader) and in expressing hope for the future. Increase in references to words such as "renewal", "revival", "prepare", "begin", "reform" that suggest action plans in motion and reflect governmental energy.<span style="color:red">(Category: "Begin", "Goal")</span> 
+
+(d) Marked increase in use of activist language to foster cooperation with the people in nation building, appealing more to ways of power cooperation <span style="color:red">(Category: "PowCoop")</span>, such as "cooperation", "collective", "harmony", "together"
+
+#####Overall inference for (iii)
+
+Analysis above point to an increase over time in focus of the speeches to highlight the transfer of power to the people, which is something increasingly valued in modern societies in general, not just in American society. People are no longer interested in absolute power and are calling for increase rights to participate in decision making with the authorities. The President needs to show in his speech such a willingness to cooperate, draw people in, and share power in nation building in order to gain support and trust for his term ahead in office.
+
+Also, there is a decrease in willingness to bring up uncertainties and challenges from the mid-19th century onwards, vs a higher tendency for leaders before mid 19th century to highlight such challenges and issues that they foresee in office. We could possibly attribute such an observation to an increasing lack of humility in the leaders, but it could even more so be a reflection of the economical and technological progress of America, and in particular the emergence of the United States as a global power. 
+
+
+#### (iv) Republican to Democratic 
+
+To clarify: The use of Republican and Democratic as descriptors here is not so much in regards to party affliations, but more in regards to the tone and emotions associated with the rhetorics of both ideologies.
+
+Similarly, I identified several word categories that could convey Republican and Democratic ways of expressions. Summing across counts for all words in each categories, below are the plots for each category under (iv) displayed using the Shiny app.
+
+```{r, message=FALSE, warning=FALSE}
+categoryiv<- c("Nonadlt", "AffTot", "WlbTot", "WlbPt", "AffPt")
+```
+
+```{r, echo=FALSE}
+ui<- fluidPage (
+  titlePanel("Republican to Democratic"), 
+  sidebarLayout(
+    sidebarPanel("Categories",
+                 selectInput('element_id', label='Select one option', choices=categoryiv)),
+     mainPanel("% frequency of sum of words in speech over time", 
+                p(textOutput('dynamicText')),
+              plotOutput('countcat', height = "450px")))) 
+
+
+server= function(input, output) { 
+  output$dynamicText <- renderText({
+    sprintf('You selected %s', input$element_id)
+  })
+  output$countcat <- renderPlot(height = 450, {
+    catfunc(input$element_id) 
+  })} 
+
+shinyApp(ui=ui, server=server)
+```
+
+The movement of Republican to Democratic forms of expressions can be observed in the following ways.
+
+(a) A more compassionate reference to the people, and an exponential increase in the inferences made to infants and adolescents <span style="color:red">(Category: "NonAdlt")</span>, compared to barely any references being made to them before the mid-19th century. 
+
+(b) Speeches are brought down to the local level, and tone takes a more people-oriented approach.  More words that highlight the value of love and friendship for participants <span style="color:red">(Category: AffTot)</span> (despite a slight decrease in the last two speeches). Words that evoke and show general concern for wellbeing <span style="color:red">(Category: "WlbTot", "WlbPt")</span> showed a significant increase from the start of the 19th century, and specifically a sharp sudden increase for roles that evoke a concern for well-being such as "patient" <span style="color:red">(Category: AffPt)</span>  
+
+As GI does not have relevant categories for words like "legislature", "senate" etc, which I feel could contribute interesting insights to this discussion as well, I will present the % frequency of such relevant words over time using the *year_term_counts* function used in Part (i). 
+
+(c) Leaders have increasing tendency to present themselves more as protectors of the people, and less as an entity of the government body or constitution. We can see from the plot below that the use of **"legislature"** almost entirely disappeared from 19th century onwards. Use of **"senate"** and **"constitution"** also decreased significantly from mid 19th century. 
+
+```{r, message=FALSE, warning=FALSE}
+wordveciic<- c("legislature", "senate", "constitution")
+plot.yearterm(wordveciic)
+```
+
+(d) Less popular republican rhetoric: usage of words such as **"duty"** decreased steadily from mid 19th century, while words like **"virtuous"** and **"republic"** almost entirely disappeared from 20th century onwards. In comparison, **"democracy"** was almost completely non-existent in inaugural speeches until late 19th century and remained significantly present in most of the addresses after that. 
+
+```{r, message=FALSE, warning=FALSE}
+wordveciid<- c("duty",  "virtuous", "republic", "democracy")
+plot.yearterm(wordveciid)
+```
+
+##### Overall inference for (iv)
+
+These changes seem to suggest that there is a transformation of the President-public relationship from one of authority to comradeship and personal concern. There is an overall increase in tendency for collective self-reference- in particular, pre-20th century presidents preferred the use of "United States", while 20th century presidents after Nixon have preferred the use of "america" (refer to figure below). This could imply the changing dynamics of American pluralism such that the leaders have found an increasing to verbally express a point of commonality between other units such as parties, races and communities, rather than between states as before. 
+
+```{r, message=FALSE, warning=FALSE}
+wordveciiex<- c("america")
+plot.yearterm(wordveciiex)
+```
+
+#Conclusion for Part 2: What changed? 
+
+The results in this second half indicates a clear distinction between pre and post twentieth century Presidential speeches. An over-arching theme to these changes is that speeches have become more people oriented, more democratic, and more intimate. The stronger inclination towards using words that convey abstract ideals and concepts could suggests increasingly complex requirements in modern life, which counter-intuitively entices people to gravitate towards these abstract and outwordly concepts. The modern century has been characterized by movements all over the world to return power to the people, and the American society values no other wise. 
+
+#Overall conclusion of notebook
+
+Over the years, inauguration speeches seek to fulfill the same primary purposes as we have established in Part 1 (What remains rooted?). They are primarily used by the President to reassure those who supported him, and pacify those who opposed. It is to rally people to move forward under new leadership, and to understand that it would be done with smooth contuinity without too much drastic changes. To the wider world, it is to strengthen America's role in international affairs, and their reinforce their position as world leader. 
+
+But as we have analyzed in Part 2 (What changed?), inaugural speeches have changed rather significantly over time, with carefully changing calliberated use of words to convey new messages, tone, and appeal to the ever changing demands and preferences of the electorate. They reflect changes in priorities of the American society, and evolving expectations of the people towards leadership and power. 
+
+Unquestionably, isolated counterexamples to the observed similarities and trends do exist. <span style="color:red">In particular, the recent Donald Trump inaugural speech has been marked by various analysts to defy all previous trends of inaugural speeches, which partly explains the defying downward pull of the fitted line in some of the plots.</span> Regardless, I hope that this notebook has served its purpose in providing more insights on the significance of inaugural speeches, and in shedding more light on what they are capabale of conveying. 
