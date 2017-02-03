@@ -12,6 +12,7 @@ Term: Spring 2017
 + This project is conducted by Jia Hui Tan
 
 + Project summary: [a short summary] 
+
 Presidential inaugural addresses mark the beginning of a new era of leadership. These addresses serve to dignify the nation and its values,to unite a deeply divded electorate, and to give a sense of direction and continuity. Some speeches have been serviceable, some forgettable, and some remembered till today. 
 
 But inauguration speeches can provide more information and insights than just memorable and iconic quotes. A more focused and deeper analysis of these speeches over time could be highly illuminating and could provide some reflections on how the American society has evolved over time. While these addresses are still rooted to certain traditional expectations, purpose, and norms, they each also bear signs to the time in which it was written and delivered.
