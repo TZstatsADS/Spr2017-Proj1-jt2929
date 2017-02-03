@@ -8,7 +8,7 @@ This is the first and only *individual* (as opposed to *team*) this semester.
 
 Term: Spring 2017
 
-+ Projec title: Down with the old and off to the new? - A story of how inauguration speeches can shed some light on the evolution of the American society over time, and what remains rooted
++ Projec title: Off with the Old, On with the New? - A story of how inauguration speeches can shed some light on the evolution of the American society over time, and what remains rooted
 + This project is conducted by Jia Hui Tan
 
 + Project summary: [a short summary] 
